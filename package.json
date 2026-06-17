@@ -1,0 +1,19 @@
+{
+  "name": "rektradar-sdk-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser demo of @mik3fly-lab/rektradar-sdk on the RektRadar free tier - token risk lookups + a live rug/deploy feed, no API key.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mik3fly-lab/rektradar-sdk": "^0.1.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vite": "^6.0.7"
+  }
+}

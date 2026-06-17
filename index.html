@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RektRadar SDK demo - free tier</title>
+    <meta
+      name="description"
+      content="A browser demo of the @mik3fly-lab/rektradar-sdk: look up any Ethereum token's risk score and flags, and watch a live feed of new deploys and rugs - all on the free tier, no API key."
+    />
+    <link rel="preconnect" href="https://api.rektradar.io" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="head">
+        <div class="brand">&gt; rektradar <span>sdk demo</span></div>
+        <p class="tagline">
+          Everything on this page is the official
+          <a href="https://www.npmjs.com/package/@mik3fly-lab/rektradar-sdk" target="_blank" rel="noopener"><code>@mik3fly-lab/rektradar-sdk</code></a>
+          running in your browser, on the <strong>free tier</strong> - no API key, no signup.
+        </p>
+        <p class="freshness" id="freshness">free tier: targeted lookups are real-time; the live flow is ~10 min delayed.</p>
+      </header>
+
+      <!-- 1. Token checker (REST, real-time) -->
+      <section class="card">
+        <h2>// check a token</h2>
+        <p class="hint">
+          <code>rr.token(address)</code> - real-time risk verdict for any Ethereum contract.
+        </p>
+        <form id="check-form" class="row">
+          <input id="addr" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="0x contract address..." value="0x682d9d317a077305d36c1fcc9821734046d4de2b" />
+          <button type="submit" id="check-btn">scan</button>
+        </form>
+        <div class="examples">
+          try:
+          <button class="ex" data-addr="0x682d9d317a077305d36c1fcc9821734046d4de2b">honeypot</button>
+          <button class="ex" data-addr="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48">USDC (legit)</button>
+        </div>
+        <div id="verdict" class="verdict" hidden></div>
+      </section>
+
+      <!-- 2. Recent rugs (REST flow, delayed on free) -->
+      <section class="card">
+        <h2>// recent rugs <span class="badge" id="rugs-delay"></span></h2>
+        <p class="hint"><code>rr.rugs(&#123; since: "7d" &#125;)</code> - pools drained recently.</p>
+        <div id="rugs" class="list"><div class="muted">loading...</div></div>
+      </section>
+
+      <!-- 3. Live feed (WebSocket stream) -->
+      <section class="card">
+        <h2>// live feed <span class="dot" id="ws-dot"></span><span class="badge" id="ws-state">connecting</span></h2>
+        <p class="hint">
+          <code>connectStream(&#123; events: ["new_token", "imminent_rug", "rug"] &#125;)</code> - pushed over WebSocket.
+        </p>
+        <div id="feed" class="feed"><div class="muted">waiting for events...</div></div>
+      </section>
+
+      <footer class="foot">
+        <a href="https://rektradar.io/developers/" target="_blank" rel="noopener">docs</a> ·
+        <a href="https://www.npmjs.com/package/@mik3fly-lab/rektradar-sdk" target="_blank" rel="noopener">npm</a> ·
+        <a href="https://github.com/mik3fly-lab/rektradar-sdk-demo" target="_blank" rel="noopener">source</a> ·
+        <a href="https://api.rektradar.io/v1/docs" target="_blank" rel="noopener">OpenAPI</a>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
