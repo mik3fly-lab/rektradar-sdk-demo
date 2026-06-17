@@ -4,6 +4,7 @@
  *
  *   - rr.token(addr)            -> real-time risk verdict (score + flags)
  *   - rr.rugs({ since })        -> recent rug pulls (delayed ~10 min on free)
+ *   - rr.trends({ period })     -> scam pools / analyses bucketed over time
  *   - connectStream({ events }) -> live WebSocket feed of deploys / rugs
  *
  * No key is passed, so the client runs as anonymous-free: targeted lookups stay
@@ -20,6 +21,25 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
 const esc = (s: unknown): string =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
 const short = (a: string): string => (a && a.length > 12 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
+
+// Pull the event's REAL on-chain/analysis time out of its data (not arrival time),
+// so the ~10 min free-tier delay is visible.
+const TIME_FIELDS = ["analyzedAt", "analyzed_at", "detectedAt", "ruggedAt", "rugged_at", "scoredAt", "ts", "timestamp", "blockTime", "time"];
+function eventMs(d: Record<string, unknown>): number | null {
+  for (const k of TIME_FIELDS) {
+    const v = d[k];
+    if (typeof v === "string") {
+      const t = Date.parse(v);
+      if (!Number.isNaN(t)) return t;
+    }
+    if (typeof v === "number" && Number.isFinite(v)) return v > 1e12 ? v : v * 1000; // sec -> ms
+  }
+  return null;
+}
+const ago = (ms: number): string => {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  return s < 90 ? `${s}s ago` : `${Math.round(s / 60)}m ago`;
+};
 
 // ── 1. Token checker (rr.token) ──────────────────────────────────────────────
 
@@ -72,36 +92,114 @@ document.querySelectorAll<HTMLButtonElement>(".ex").forEach((b) =>
   }),
 );
 
-// ── 2. Recent rugs (rr.rugs) ─────────────────────────────────────────────────
+// ── Tiny chart helpers (no chart lib - matches the mono theme) ────────────────
 
-async function loadRugs(): Promise<void> {
-  const box = $("rugs");
+type Bar = { label: string; value: number; sub?: string; href?: string; title?: string };
+
+/** Horizontal labeled bars - for ranked lists (rugs by ETH). */
+function renderHBars(box: HTMLElement, bars: Bar[], color: string): void {
+  if (!bars.length) { box.innerHTML = `<div class="muted">no data in the window yet.</div>`; return; }
+  const max = Math.max(...bars.map((b) => b.value), 1);
+  box.innerHTML = bars
+    .map((b) => {
+      const pct = Math.max(2, Math.round((b.value / max) * 100));
+      const inner =
+        `<span class="hb-label">${esc(b.label)}</span>` +
+        `<span class="hb-track"><span class="hb-fill" style="width:${pct}%;background:${color}"></span></span>` +
+        `<span class="hb-val">${esc(b.sub ?? String(b.value))}</span>`;
+      return b.href
+        ? `<a class="hb" href="${esc(b.href)}" target="_blank" rel="noopener">${inner}</a>`
+        : `<div class="hb">${inner}</div>`;
+    })
+    .join("");
+}
+
+/** Vertical columns - for time-series (per day / per hour). */
+function renderColumns(box: HTMLElement, bars: Bar[], color: string): void {
+  if (!bars.length) { box.innerHTML = `<div class="muted">no data in the window yet.</div>`; return; }
+  const max = Math.max(...bars.map((b) => b.value), 1);
+  box.innerHTML = `<div class="cols">${bars
+    .map((b) => {
+      const pct = Math.max(3, Math.round((b.value / max) * 100));
+      return `<div class="col" title="${esc(b.title ?? `${b.label}: ${b.value}`)}">` +
+        `<span class="col-v">${b.value}</span>` +
+        `<span class="col-bar" style="height:${pct}%;background:${color}"></span>` +
+        `<span class="col-x">${esc(b.label)}</span></div>`;
+    })
+    .join("")}</div>`;
+}
+
+const fmtDay = (d: string): string => (d.length >= 10 ? d.slice(5, 10) : d); // 2026-06-16 -> 06-16
+const fmtHour = (d: string): string => { const m = /(\d{2}):\d{2}$/.exec(d); return m ? `${m[1]}h` : d; }; // ... 14:00 -> 14h
+
+// ── 2. Biggest rugs by ETH drained (rr.rugs) ─────────────────────────────────
+
+async function loadTopRugs(): Promise<void> {
+  const box = $("rugs-chart");
   try {
-    const res = await rr.rugs({ since: "7d" });
+    const res = await rr.rugs({ since: "30d" });
     const delay = res.dataDelaySeconds ?? 0;
     $("rugs-delay").textContent = delay > 0 ? `delayed ${Math.round(delay / 60)}m (free)` : "real-time";
-    const rugs = Array.isArray(res.rugs) ? res.rugs.slice(0, 8) : [];
-    if (!rugs.length) {
-      box.innerHTML = `<div class="muted">no rugs in the window (or still computing - try again shortly).</div>`;
-      return;
-    }
-    box.innerHTML = rugs
-      .map((r) => {
-        const sym = (r.symbol as string) || (r.name as string) || "";
-        const addr = (r.address as string) || (r.pool as string) || "";
-        const eth = (r.ethProfit ?? r.profitEth ?? r.ethDrained) as number | undefined;
-        return `<a class="rug" href="https://app.rektradar.io/scam/${esc(sym)}" target="_blank" rel="noopener">
-          <span class="rug-sym">${sym ? "$" + esc(sym) : esc(short(addr))}</span>
-          ${typeof eth === "number" ? `<span class="rug-eth">-${eth.toFixed(1)} ETH</span>` : ""}
-        </a>`;
-      })
-      .join("");
+    const rugs = (Array.isArray(res.rugs) ? res.rugs : [])
+      .map((r) => ({
+        sym: (r.symbol as string) || (r.name as string) || "",
+        addr: (r.pool as string) || (r.token as string) || "",
+        profit: Number(r.profit) || 0,
+      }))
+      .filter((r) => r.profit > 0)
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 8);
+    renderHBars(
+      box,
+      rugs.map((r) => ({
+        label: r.sym ? `$${r.sym}` : short(r.addr),
+        value: r.profit,
+        sub: `${r.profit.toFixed(1)} ETH`,
+        href: r.sym ? `https://app.rektradar.io/scam/${encodeURIComponent(r.sym)}` : undefined,
+      })),
+      "var(--red)",
+    );
   } catch (err) {
     box.innerHTML = `<div class="muted">could not load rugs: ${esc((err as Error).message)}</div>`;
   }
 }
 
-// ── 3. Live feed (connectStream) ─────────────────────────────────────────────
+// ── 3. New scams per day (rr.trends, daily) ──────────────────────────────────
+
+async function loadDaily(): Promise<void> {
+  const box = $("daily-chart");
+  try {
+    const res = await rr.trends({ period: "7d", granularity: "daily" });
+    const bars = (res.trends || []).map((t) => ({
+      label: fmtDay(String(t.date)),
+      value: Number(t.tokensDetected) || 0,
+      title: `${t.date}: ${Number(t.tokensDetected) || 0} new scam pools`,
+    }));
+    renderColumns(box, bars, "var(--orange)");
+  } catch (err) {
+    box.innerHTML = `<div class="muted">could not load trends: ${esc((err as Error).message)}</div>`;
+  }
+}
+
+// ── 4. Live pulse, last 6h (rr.trends, hourly) ───────────────────────────────
+
+async function loadHourly(): Promise<void> {
+  const box = $("hourly-chart");
+  try {
+    const res = await rr.trends({ period: "6h", granularity: "hourly" });
+    $("hourly-delay").textContent = res.dataDelaySeconds > 0 ? "free: live hour withheld" : "6h";
+    const bars = (res.trends || []).map((t) => ({
+      label: fmtHour(String(t.date)),
+      value: Number(t.tokensDetected) || 0,
+      title: `${t.date}: ${Number(t.tokensDetected) || 0} new scam pools`,
+    }));
+    renderColumns(box, bars, "var(--red)");
+  } catch (err) {
+    box.innerHTML = `<div class="muted">could not load pulse: ${esc((err as Error).message)}</div>`;
+  }
+}
+
+// ── 5. Live feed (connectStream) ─────────────────────────────────────────────
 
 const ICONS: Record<string, string> = {
   new_token: "+",
@@ -127,9 +225,14 @@ function pushEvent(ev: StreamEvent): void {
       : ev.type === "token_scored" && typeof d.score === "number"
         ? `<span class="ev-x">${d.score}/100</span>`
         : "";
+  // Show the event's REAL time + how long ago - on free it lands ~10 min late.
+  const ms = eventMs(d);
+  const when = ms
+    ? `${new Date(ms).toLocaleTimeString()} <span class="ev-age">(${ago(ms)})</span>`
+    : new Date().toLocaleTimeString();
   const row = document.createElement("div");
   row.className = `ev ev-${esc(ev.type)}`;
-  row.innerHTML = `<span class="ev-ico">${ICONS[ev.type] || "."}</span><span class="ev-type">${esc(ev.type)}</span><span class="ev-label">${esc(label)}</span>${extra}<span class="ev-t">${new Date().toLocaleTimeString()}</span>`;
+  row.innerHTML = `<span class="ev-ico">${ICONS[ev.type] || "."}</span><span class="ev-type">${esc(ev.type)}</span><span class="ev-label">${esc(label)}</span>${extra}<span class="ev-t">${when}</span>`;
   feed.prepend(row);
   while (feed.children.length > 40) feed.lastChild?.remove();
 }
@@ -153,4 +256,6 @@ connectStream({
 // ── boot ─────────────────────────────────────────────────────────────────────
 
 void checkToken($<HTMLInputElement>("addr").value);
-void loadRugs();
+void loadTopRugs();
+void loadDaily();
+void loadHourly();

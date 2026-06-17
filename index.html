@@ -6,7 +6,7 @@
     <title>RektRadar SDK demo - free tier</title>
     <meta
       name="description"
-      content="A browser demo of the @mik3fly-lab/rektradar-sdk: look up any Ethereum token's risk score and flags, and watch a live feed of new deploys and rugs - all on the free tier, no API key."
+      content="A browser demo of the @mik3fly-lab/rektradar-sdk: look up any Ethereum token's risk score and flags, chart new scams over time, and watch a live feed of deploys and rugs - all on the free tier, no API key."
     />
     <link rel="preconnect" href="https://api.rektradar.io" />
   </head>
@@ -21,6 +21,26 @@
         </p>
         <p class="freshness" id="freshness">free tier: targeted lookups are real-time; the live flow is ~10 min delayed.</p>
       </header>
+
+      <!-- The whole integration - the exact SDK calls the panels below run -->
+      <section class="card">
+        <h2>// the entire integration</h2>
+        <pre class="code"><code>npm install @mik3fly-lab/rektradar-sdk
+
+import { RektRadar, connectStream } from "@mik3fly-lab/rektradar-sdk";
+
+const rr = new RektRadar();                       // free tier - no API key
+
+const v = await rr.token("0x...");                // real-time risk verdict
+const { rugs } = await rr.rugs({ since: "30d" }); // recent rugs (~10 min delayed on free)
+const { trends } = await rr.trends({ period: "7d", granularity: "daily" });
+
+connectStream({                                   // live feed over WebSocket
+  events: ["new_token", "imminent_rug", "rug"],
+  onMessage: (e) =&gt; console.log(e.type, e.data),
+});</code></pre>
+        <p class="hint">That is the whole thing. The panels below are exactly this, running live.</p>
+      </section>
 
       <!-- 1. Token checker (REST, real-time) -->
       <section class="card">
@@ -41,14 +61,31 @@
         <div id="verdict" class="verdict" hidden></div>
       </section>
 
-      <!-- 2. Recent rugs (REST flow, delayed on free) -->
+      <!-- 2. Biggest rugs by ETH drained (REST flow, delayed on free) -->
       <section class="card">
-        <h2>// recent rugs <span class="badge" id="rugs-delay"></span></h2>
-        <p class="hint"><code>rr.rugs(&#123; since: "7d" &#125;)</code> - pools drained recently.</p>
-        <div id="rugs" class="list"><div class="muted">loading...</div></div>
+        <h2>// biggest rugs <span class="badge" id="rugs-delay"></span></h2>
+        <p class="hint"><code>rr.rugs(&#123; since: "30d" &#125;)</code> - pools ranked by ETH drained.</p>
+        <div id="rugs-chart" class="chart"><div class="muted">loading...</div></div>
       </section>
 
-      <!-- 3. Live feed (WebSocket stream) -->
+      <!-- 3. New scams per day (rr.trends, daily) -->
+      <section class="card">
+        <h2>// new scams per day <span class="badge">7d</span></h2>
+        <p class="hint"><code>rr.trends(&#123; period: "7d", granularity: "daily" &#125;)</code> - new scam pools detected per day.</p>
+        <div id="daily-chart" class="chart"><div class="muted">loading...</div></div>
+      </section>
+
+      <!-- 4. Live pulse, last 6h (rr.trends, hourly) -->
+      <section class="card">
+        <h2>// live pulse <span class="badge" id="hourly-delay">6h</span></h2>
+        <p class="hint">
+          <code>rr.trends(&#123; period: "6h", granularity: "hourly" &#125;)</code> - new scam pools per hour.
+          On the free tier the current (live) hour is withheld - that is the delay paywall.
+        </p>
+        <div id="hourly-chart" class="chart"><div class="muted">loading...</div></div>
+      </section>
+
+      <!-- 5. Live feed (WebSocket stream) -->
       <section class="card">
         <h2>// live feed <span class="dot" id="ws-dot"></span><span class="badge" id="ws-state">connecting</span></h2>
         <p class="hint">

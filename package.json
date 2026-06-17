@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mik3fly-lab/rektradar-sdk": "^0.1.4"
+    "@mik3fly-lab/rektradar-sdk": "^0.1.5"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
