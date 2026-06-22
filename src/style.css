@@ -171,3 +171,21 @@ a.hb:hover .hb-label { color: var(--red); }
   .v-head { flex-wrap: wrap; }
   .ev-type { min-width: 5rem; }
 }
+
+/* Live API quota badge (free tier, per real client IP) */
+.quota {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-top: 0.5rem; font-size: 0.72rem; color: var(--dim);
+}
+.quota-label { white-space: nowrap; }
+.quota-track {
+  flex: 1; max-width: 160px; height: 6px;
+  background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden;
+}
+.quota-fill {
+  display: block; height: 100%; width: 0%;
+  background: var(--green); border-radius: 3px; transition: width 0.4s ease;
+}
+.quota-fill.low { background: var(--orange); }
+.quota-fill.full { background: var(--red); }
+.quota-val { white-space: nowrap; color: var(--text); }
