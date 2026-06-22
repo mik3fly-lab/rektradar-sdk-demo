@@ -14,6 +14,46 @@
 import "./style.css";
 import { RektRadar, connectStream, type StreamEvent } from "@mik3fly-lab/rektradar-sdk";
 
+// ── Live API quota badge ─────────────────────────────────────────────────────
+// SDK calls go through the browser's fetch; wrap it once (before `rr` is built)
+// so we can read the X-RateLimit-* headers the API exposes via CORS and show the
+// real free-tier quota usage live - without spending an extra request. Bound to
+// globalThis to avoid the "Illegal invocation" trap on an unbound fetch.
+let quotaTimer: ReturnType<typeof setInterval> | undefined;
+function renderQuota(limit: number, remaining: number, resetAtSec: number): void {
+  const box = document.getElementById("quota");
+  const fill = document.getElementById("quota-fill");
+  const val = document.getElementById("quota-val");
+  if (!box || !fill || !val) return;
+  box.hidden = false;
+  const used = Math.max(0, limit - remaining);
+  const pct = limit > 0 ? Math.round((used / limit) * 100) : 0;
+  fill.style.width = `${pct}%`;
+  fill.className = `quota-fill${remaining <= 0 ? " full" : remaining <= limit * 0.2 ? " low" : ""}`;
+  const tick = (): void => {
+    const secs = Math.max(0, resetAtSec - Math.floor(Date.now() / 1000));
+    val.textContent = `${used}/${limit} used - resets in ${secs}s`;
+    if (secs <= 0 && quotaTimer) { clearInterval(quotaTimer); quotaTimer = undefined; }
+  };
+  tick();
+  if (quotaTimer) clearInterval(quotaTimer);
+  quotaTimer = setInterval(tick, 1000);
+}
+
+const _fetch = globalThis.fetch.bind(globalThis);
+globalThis.fetch = (async (...args: Parameters<typeof fetch>): Promise<Response> => {
+  const res = await _fetch(...args);
+  try {
+    const limit = res.headers.get("X-RateLimit-Limit");
+    const remaining = res.headers.get("X-RateLimit-Remaining");
+    const reset = res.headers.get("X-RateLimit-Reset");
+    if (limit && remaining && reset) {
+      renderQuota(Number(limit), Number(remaining), Number(reset));
+    }
+  } catch { /* best-effort: header read never breaks the call */ }
+  return res;
+}) as typeof fetch;
+
 const rr = new RektRadar(); // free / anonymous; uses the browser's fetch + WebSocket
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>

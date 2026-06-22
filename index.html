@@ -20,6 +20,11 @@
           running in your browser, on the <strong>free tier</strong> - no API key, no signup.
         </p>
         <p class="freshness" id="freshness">free tier: targeted lookups are real-time; the live flow is ~10 min delayed.</p>
+        <div class="quota" id="quota" hidden>
+          <span class="quota-label">api quota (free / this IP)</span>
+          <span class="quota-track"><span class="quota-fill" id="quota-fill"></span></span>
+          <span class="quota-val" id="quota-val"></span>
+        </div>
       </header>
 
       <!-- The whole integration - the exact SDK calls the panels below run -->
