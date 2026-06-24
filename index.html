@@ -9,6 +9,11 @@
       content="A browser demo of the @mik3fly-lab/rektradar-sdk: look up any Ethereum token's risk score and flags, chart new scams over time, and watch a live feed of deploys and rugs - all on the free tier, no API key."
     />
     <link rel="preconnect" href="https://api.rektradar.io" />
+    <link rel="preconnect" href="https://analytics.rektradar.io" />
+    <!-- Plausible (self-hosted) — measures demo page traffic; dedicated site so it
+         does not mix with the main rektradar.io stats. API usage is tracked separately
+         via the nginx referer logs on api.rektradar.io. -->
+    <script defer data-domain="demo.rektradar.io" src="https://analytics.rektradar.io/js/script.js"></script>
   </head>
   <body>
     <main class="wrap">
