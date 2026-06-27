@@ -2,6 +2,7 @@
  * RektRadar SDK demo - everything here is the published npm package
  * `@mik3fly-lab/rektradar-sdk`, running client-side on the FREE tier (no API key).
  *
+ *   - rr.stats()                -> platform-wide counters (real-time)
  *   - rr.token(addr)            -> real-time risk verdict (score + flags)
  *   - rr.rugs({ since })        -> recent rug pulls (delayed ~10 min on free)
  *   - rr.trends({ period })     -> scam pools / analyses bucketed over time
@@ -61,6 +62,10 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
 const esc = (s: unknown): string =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
 const short = (a: string): string => (a && a.length > 12 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a);
+const fmtNum = (n: number): string =>
+  n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`
+    : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k`
+      : String(Math.round(n));
 
 // Pull the event's REAL on-chain/analysis time out of its data (not arrival time),
 // so the ~10 min free-tier delay is visible.
@@ -80,6 +85,26 @@ const ago = (ms: number): string => {
   const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
   return s < 90 ? `${s}s ago` : `${Math.round(s / 60)}m ago`;
 };
+
+// ── 0. Platform stats (rr.stats) ─────────────────────────────────────────────
+
+async function loadStats(): Promise<void> {
+  const box = $("stats-grid");
+  try {
+    const s = await rr.stats();
+    const cells: Array<[string, number]> = [
+      ["tokens scanned", Number(s.tokensScanned) || 0],
+      ["scams detected", Number(s.scamsDetected) || 0],
+      ["pools monitored", Number(s.poolsMonitored) || 0],
+      ["deployers mapped", Number(s.deployersMapped) || 0],
+    ];
+    box.innerHTML = cells
+      .map(([label, v]) => `<div class="stat"><span class="stat-v">${esc(fmtNum(v))}</span><span class="stat-l">${esc(label)}</span></div>`)
+      .join("");
+  } catch (err) {
+    box.innerHTML = `<div class="muted">could not load stats: ${esc((err as Error).message)}</div>`;
+  }
+}
 
 // ── 1. Token checker (rr.token) ──────────────────────────────────────────────
 
@@ -295,6 +320,7 @@ connectStream({
 
 // ── boot ─────────────────────────────────────────────────────────────────────
 
+void loadStats();
 void checkToken($<HTMLInputElement>("addr").value);
 void loadTopRugs();
 void loadDaily();
