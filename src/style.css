@@ -111,6 +111,15 @@ button:disabled { opacity: 0.5; cursor: wait; }
   border-radius: 3px; padding: 0.12rem 0.45rem; background: rgba(255, 68, 68, 0.05);
 }
 
+/* platform stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+.stat {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.7rem 0.85rem; display: flex; flex-direction: column; gap: 0.2rem;
+}
+.stat-v { font-family: var(--mono); font-weight: 700; font-size: 1.45rem; color: var(--text); line-height: 1; }
+.stat-l { color: var(--dim); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
 /* charts */
 .chart { margin-top: 0.4rem; }
 

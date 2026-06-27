@@ -39,12 +39,20 @@ const rr = new RektRadar();                       // free tier - no API key
 const v = await rr.token("0x...");                // real-time risk verdict
 const { rugs } = await rr.rugs({ since: "30d" }); // recent rugs (~10 min delayed on free)
 const { trends } = await rr.trends({ period: "7d", granularity: "daily" });
+const s = await rr.stats();                       // platform-wide counters
 
 connectStream({                                   // live feed over WebSocket
   events: ["new_token", "imminent_rug", "rug"],
   onMessage: (e) =&gt; console.log(e.type, e.data),
 });</code></pre>
         <p class="hint">That is the whole thing. The panels below are exactly this, running live.</p>
+      </section>
+
+      <!-- 0. Platform stats (REST, real-time) -->
+      <section class="card">
+        <h2>// platform stats <span class="badge">live</span></h2>
+        <p class="hint"><code>rr.stats()</code> - platform-wide counters, real-time for every tier.</p>
+        <div id="stats-grid" class="stats-grid"><div class="muted">loading...</div></div>
       </section>
 
       <!-- 1. Token checker (REST, real-time) -->
