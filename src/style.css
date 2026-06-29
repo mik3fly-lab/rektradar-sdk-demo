@@ -181,6 +181,31 @@ a.hb:hover .hb-label { color: var(--red); }
   .ev-type { min-width: 5rem; }
 }
 
+/* Free-tier upsell banner (revealed on HTTP 429) + key CTA links */
+.upsell {
+  display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+  margin-bottom: 1.5rem; padding: 0.85rem 1rem;
+  background: rgba(255, 136, 0, 0.08);
+  border: 1px solid var(--orange); border-radius: 8px;
+}
+.upsell-body { flex: 1; min-width: 12rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+.upsell-body strong { color: var(--orange); }
+.upsell-cta {
+  flex: 0 0 auto; background: var(--orange); color: #0a0a0f;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 0.76rem; padding: 0.5rem 0.9rem; border-radius: 6px;
+}
+.upsell-cta:hover { background: var(--red); color: #fff; text-decoration: none; }
+.upsell-x {
+  flex: 0 0 auto; background: transparent; color: var(--dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.25rem 0.55rem; font-size: 0.7rem; text-transform: none; letter-spacing: 0;
+}
+.upsell-x:hover { background: transparent; color: var(--red); border-color: var(--red); }
+
+.keynote { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--dim); }
+.keynote a { font-weight: 700; }
+
 /* Live API quota badge (free tier, per real client IP) */
 .quota {
   display: flex; align-items: center; gap: 0.5rem;

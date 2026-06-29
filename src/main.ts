@@ -41,9 +41,20 @@ function renderQuota(limit: number, remaining: number, resetAtSec: number): void
   quotaTimer = setInterval(tick, 1000);
 }
 
+// ── Free-tier 429 upsell ─────────────────────────────────────────────────────
+// When the API rate-limits the anonymous free tier (HTTP 429), reveal the inline
+// CTA: a free API key lifts the limit from 10/min to 40/min + 10k/mo (email only,
+// no card). This is the demo's highest-intent moment - the visitor IS the
+// anonymous hitter we want to convert into a known email.
+function showRateLimitCta(): void {
+  const box = document.getElementById("upsell");
+  if (box) box.hidden = false;
+}
+
 const _fetch = globalThis.fetch.bind(globalThis);
 globalThis.fetch = (async (...args: Parameters<typeof fetch>): Promise<Response> => {
   const res = await _fetch(...args);
+  if (res.status === 429) showRateLimitCta();
   try {
     const limit = res.headers.get("X-RateLimit-Limit");
     const remaining = res.headers.get("X-RateLimit-Remaining");
@@ -54,6 +65,11 @@ globalThis.fetch = (async (...args: Parameters<typeof fetch>): Promise<Response>
   } catch { /* best-effort: header read never breaks the call */ }
   return res;
 }) as typeof fetch;
+
+document.getElementById("upsell-x")?.addEventListener("click", () => {
+  const box = document.getElementById("upsell");
+  if (box) box.hidden = true;
+});
 
 const rr = new RektRadar(); // free / anonymous; uses the browser's fetch + WebSocket
 
